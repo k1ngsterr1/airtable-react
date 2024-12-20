@@ -23,7 +23,7 @@ export default function DatabasesWidget() {
   const [newDatabaseName, setNewDatabaseName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
-  const { data, isLoading } = useDatabasesData();
+  const { data } = useDatabasesData();
   const { mutate: addDatabase, isPending } = useCreateDatabase();
 
   const handleAddDatabase = () => {
@@ -38,8 +38,6 @@ export default function DatabasesWidget() {
       }
     );
   };
-
-  const removeDatabase = (id: number) => {};
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -105,11 +103,7 @@ export default function DatabasesWidget() {
                   <Database className="h-5 w-5 mr-2" />
                   <span>{db.name}</span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeDatabase(db.id)}
-                >
+                <Button variant="ghost" size="icon">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

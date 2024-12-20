@@ -1,6 +1,8 @@
 import axios from "axios";
 
-export const fetchTableNames = async (baseID: string): Promise<string[]> => {
+export const fetchTableNames = async (
+  baseID: string | undefined
+): Promise<string[]> => {
   try {
     const response = await axios.get(
       `https://api.airtable.com/v0/meta/bases/${baseID}/tables`,
