@@ -32,29 +32,45 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   const { data } = useSpecificDatabaseData(id);
   const [currentValue, setCurrentValue] = useState("");
   const [columns, setColumns] = useState<string[]>([]);
+  const [tableNames, setTableNames] = useState<string[]>([]);
+  const [selectedTableName, setSelectedTableName] = useState<string | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
 
-  const tableName = "СП 241";
-
   useEffect(() => {
-    const fetchColumns = async () => {
+    const fetchTableAndColumnNames = async () => {
       try {
         setIsLoading(true);
-        const fetchedColumns = await fetchColumnNames(tableName);
+        // Fetch table names
+        const fetchedTableNames = await fetchTableNames(data?.databaseID);
+        setTableNames(fetchedTableNames);
 
-        setColumns(fetchedColumns);
+        // Optionally fetch columns for the first table
+        if (fetchedTableNames.length > 0) {
+          setSelectedTableName(fetchedTableNames[0]);
+          const fetchedColumns = await fetchColumnNames(fetchedTableNames[0]);
+          setColumns(fetchedColumns);
+        }
       } catch (error) {
-        console.error("Error fetching column names:", error);
+        console.error("Error fetching table or column names:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    const tableNames = fetchTableNames(data?.databaseID);
+    fetchTableAndColumnNames();
+  }, [data]);
 
-    console.log("table names:", tableNames);
-    fetchColumns();
-  }, [tableName]);
+  const handleTableSelect = async (tableName: string) => {
+    try {
+      setSelectedTableName(tableName);
+      const fetchedColumns = await fetchColumnNames(tableName);
+      setColumns(fetchedColumns);
+    } catch (error) {
+      console.error("Error fetching columns for selected table:", error);
+    }
+  };
 
   const addFilter = () => {
     const newFilter: Filter = {
@@ -122,82 +138,96 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
         <CardContent>
           <div className="space-y-6">
             {isLoading ? (
-              <p>Загрузка столбцов...</p>
+              <p>Загрузка таблиц...</p>
             ) : (
-              <ScrollArea className="h-[400px] pr-4">
-                {filters.map((filter) => (
-                  <div key={filter.id} className="mb-4 p-4 border rounded-lg">
-                    <div className="flex gap-4 mb-4">
-                      <Select
-                        value={filter.column}
-                        onValueChange={(value) =>
-                          updateFilterColumn(filter.id, value)
-                        }
-                      >
-                        <SelectTrigger className="w-[300px]">
-                          <SelectValue placeholder="Название столбца из Airtable" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {columns.map((column) => (
-                            <SelectItem key={column} value={column}>
-                              {column}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+              <div className="flex flex-wrap gap-4 mb-4">
+                {tableNames.map((tableName) => (
+                  <Button
+                    key={tableName}
+                    variant={
+                      selectedTableName === tableName ? "default" : "ghost"
+                    }
+                    onClick={() => handleTableSelect(tableName)}
+                  >
+                    {tableName}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            <ScrollArea className="h-[400px] pr-4">
+              {filters.map((filter) => (
+                <div key={filter.id} className="mb-4 p-4 border rounded-lg">
+                  <div className="flex gap-4 mb-4">
+                    <Select
+                      value={filter.column}
+                      onValueChange={(value) =>
+                        updateFilterColumn(filter.id, value)
+                      }
+                    >
+                      <SelectTrigger className="w-[300px]">
+                        <SelectValue placeholder="Название столбца из Airtable" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {columns.map((column) => (
+                          <SelectItem key={column} value={column}>
+                            {column}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeFilter(filter.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Значение"
+                        value={currentValue}
+                        onChange={(e) => setCurrentValue(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") {
+                            addValueToFilter(filter.id);
+                          }
+                        }}
+                      />
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
-                        onClick={() => removeFilter(filter.id)}
+                        onClick={() => addValueToFilter(filter.id)}
                       >
-                        <X className="h-4 w-4" />
+                        <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Значение"
-                          value={currentValue}
-                          onChange={(e) => setCurrentValue(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              addValueToFilter(filter.id);
-                            }
-                          }}
-                        />
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => addValueToFilter(filter.id)}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {filter.values.map((value, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md"
                         >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {filter.values.map((value, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md"
+                          <span>{value}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-4 w-4"
+                            onClick={() =>
+                              removeValueFromFilter(filter.id, index)
+                            }
                           >
-                            <span>{value}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4"
-                              onClick={() =>
-                                removeValueFromFilter(filter.id, index)
-                              }
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </ScrollArea>
-            )}
+                </div>
+              ))}
+            </ScrollArea>
 
             <div className="flex flex-col gap-4">
               <Button variant="outline" onClick={addFilter} className="w-full">
