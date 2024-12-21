@@ -1,3 +1,4 @@
+import { Toaster } from "@/components/ui/toaster";
 import FiltersWidget from "@/widgets/ui/filters-widget/ui/filters-widget";
 import { useParams } from "react-router";
 
@@ -7,6 +8,7 @@ export const FiltersPage = () => {
   return (
     <>
       <FiltersWidget id={Number(id)} />
+      <Toaster />
     </>
   );
 };

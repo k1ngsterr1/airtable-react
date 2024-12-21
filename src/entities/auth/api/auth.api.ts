@@ -8,7 +8,6 @@ export const login = async (data: LoginDto) => {
   try {
     if (typeof window === "undefined") return;
     const response = await apiClient.post("/auth/login", data);
-    console.log("Login successful:", response.data);
 
     localStorage.setItem("id", JSON.stringify(response.data.uid));
 

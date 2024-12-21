@@ -17,13 +17,14 @@ import { Label } from "@/components/ui/label";
 import { useDatabasesData } from "@/entities/databases/api/use-get-databases";
 import { useCreateDatabase } from "@/entities/databases/api/use-create-databases";
 import { useNavigate } from "react-router";
+import { LoadingScreen } from "@/shared/ui/loading";
 
 export default function DatabasesWidget() {
   const [newDatabaseId, setNewDatabaseId] = useState("");
   const [newDatabaseName, setNewDatabaseName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
-  const { data } = useDatabasesData();
+  const { data, isLoading } = useDatabasesData();
   const { mutate: addDatabase, isPending } = useCreateDatabase();
 
   const handleAddDatabase = () => {
@@ -38,6 +39,10 @@ export default function DatabasesWidget() {
       }
     );
   };
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">

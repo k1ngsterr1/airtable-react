@@ -18,11 +18,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const token = Cookies.get("admin_jwt");
-    console.log("document.cookie:", document.cookie);
-    console.log("Cookies.get('admin_jwt'):", Cookies.get("admin_jwt"));
 
     if (token) {
-      console.log("lol");
       setIsAuthenticated(true);
     }
   }, []);

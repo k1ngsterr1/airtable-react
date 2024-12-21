@@ -7,24 +7,13 @@ const base = new Airtable({
 
 export const fetchTableData = async (tableName: string) => {
   try {
-    const records = await base(tableName).select({}).firstPage();
-    console.log("records:", records);
-    return records.map((record) => record.fields); // Return only fields
+    const records = await base(tableName).select({}).all();
+
+    const columnValues = records.map((record) => record.fields);
+
+    return columnValues;
   } catch (error) {
     console.error("Error fetching table data:", error);
-    return [];
-  }
-};
-
-export const fetchColumnNames = async (tableName: string) => {
-  try {
-    const records = await base(tableName).select({ maxRecords: 1 }).firstPage();
-    if (records.length > 0) {
-      return Object.keys(records[0].fields); // Extract column names
-    }
-    return [];
-  } catch (error) {
-    console.error("Error fetching column names:", error);
     return [];
   }
 };
