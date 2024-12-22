@@ -7,7 +7,7 @@ export const useCreateReport = () => {
 
   return useMutation({
     mutationFn: (reportData: CreateReportDto) => createReport(reportData),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reportsData"] });
     },
     onError: (error) => {
