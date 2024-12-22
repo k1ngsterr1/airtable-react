@@ -40,45 +40,62 @@ export function SpecificReportWidget() {
           ))}
         </div>
       </div>
-
-      {/* Applicable Requirements */}
       <div>
         <h2 className="text-xl font-semibold mb-2">Применимые требования:</h2>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Требование</TableHead>
+              <TableHead>Высота здания, м.</TableHead>
+              <TableHead>в Кишиневе</TableHead>
+              <TableHead>Группа помещения</TableHead>
+              <TableHead>Вид ОТВ.</TableHead>
               <TableHead>Фильтр</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {report?.results.map((result, index) => (
-              <TableRow key={index}>
-                <TableCell>
-                  {/* Render the "Name" field */}
-                  {result.fields?.Name || "No Name"}
-                </TableCell>
-                <TableCell>
-                  {/* Render "Высота здания, м." */}
-                  {result.fields?.["Высота здания, м."] || "No Height"}
-                </TableCell>
-                <TableCell>
-                  {/* Render "в Кишиневе" with true/false logic */}
-                  {result.fields?.["в Кишиневе"]
-                    ? "В Кишиневе (True)"
-                    : "В Кишиневе (False)"}
-                </TableCell>
-                <TableCell>
-                  {/* Render array fields like "Группа помещения" */}
-                  {result.fields?.["Группа помещения"]?.join(", ") ||
-                    "No Group"}
-                </TableCell>
-                <TableCell>
-                  {/* Render additional field like "Вид ОТВ." */}
-                  {result.fields?.["Вид ОТВ."]?.join(", ") || "No Вид ОТВ."}
-                </TableCell>
-              </TableRow>
-            ))}
+            {report?.results.map((result, index) => {
+              // Match the filter for the current result
+              const matchedFilter = report.filters.find(
+                (filter) =>
+                  filter.column ===
+                  Object.keys(result.fields || {}).find(
+                    (key) => filter.column === key
+                  )
+              );
+
+              return (
+                <TableRow key={index}>
+                  <TableCell>
+                    {/* Render the "Name" field */}
+                    {result.fields?.Name || "No Name"}
+                  </TableCell>
+                  <TableCell>
+                    {/* Render "Высота здания, м." */}
+                    {result.fields?.["Высота здания, м."] || "No Height"}
+                  </TableCell>
+                  <TableCell>
+                    {/* Render "в Кишиневе" with true/false logic */}
+                    {result.fields?.["в Кишиневе"]
+                      ? "В Кишиневе (True)"
+                      : "В Кишиневе (False)"}
+                  </TableCell>
+                  <TableCell>
+                    {/* Render array fields like "Группа помещения" */}
+                    {result.fields?.["Группа помещения"]?.join(", ") ||
+                      "No Group"}
+                  </TableCell>
+                  <TableCell>
+                    {/* Render additional field like "Вид ОТВ." */}
+                    {result.fields?.["Вид ОТВ."]?.join(", ") || "No Вид ОТВ."}
+                  </TableCell>
+                  <TableCell>
+                    {/* Render the matched filter name */}
+                    {matchedFilter ? matchedFilter.column : "No Filter Name"}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
