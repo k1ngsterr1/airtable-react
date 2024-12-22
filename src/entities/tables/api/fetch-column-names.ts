@@ -1,11 +1,10 @@
 import Airtable from "airtable";
 
-const base = new Airtable({
-  apiKey:
-    "patsjQuI8V5XwmwoD.0803e1f55e76714c05c4e10fee04bdee8f6f423f4f964654195884d9ca45e07f",
-}).base("appqzR1trQZxfKZ0H");
+export const fetchColumnNames = async (tableName: string, baseID: string) => {
+  const base = new Airtable({
+    apiKey: import.meta.env.VITE_API_KEY,
+  }).base(baseID);
 
-export const fetchColumnNames = async (tableName: string) => {
   try {
     const records = await base(tableName).select({ maxRecords: 1 }).firstPage();
 

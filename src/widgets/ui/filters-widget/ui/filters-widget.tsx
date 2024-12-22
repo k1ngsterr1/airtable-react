@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,16 +22,16 @@ import { fetchColumnNames } from "@/entities/tables/api/fetch-column-names";
 import { fetchTableData } from "@/entities/tables/api/fetch-air-table-data";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingScreen } from "@/shared/ui/loading";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCreateReport } from "@/entities/reports/api/use-create-report";
 import { handleCreateReport } from "@/shared/utils/createReport";
 
 interface Filter {
-  id: string; // Unique identifier for the filter
-  column: string; // Column name
-  values: string[]; // String values for text-based filters
-  booleanValue?: boolean; // Boolean value for checkbox filters
-  range?: { min: number; max: number }; // Range for numeric filters
+  id: string;
+  column: string;
+  values: string[];
+  booleanValue?: boolean;
+  range?: { min: number; max: number };
 }
 
 interface FiltersWidgetProps {
@@ -53,6 +51,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   const [isLoading, setIsLoading] = useState(true);
   const { mutate: createReport, isPending: isReportLoading } =
     useCreateReport();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTableAndColumnNames = async () => {
@@ -65,7 +64,10 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
         // Optionally fetch columns for the first table
         if (fetchedTableNames.length > 0) {
           setSelectedTableName(fetchedTableNames[0]);
-          const fetchedColumns = await fetchColumnNames(fetchedTableNames[0]);
+          const fetchedColumns = await fetchColumnNames(
+            fetchedTableNames[0],
+            data!.databaseID
+          );
           setColumns(fetchedColumns);
         }
       } catch (error) {
@@ -83,12 +85,59 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
     }
   }, [tableNames]);
 
+  const processAndCreateReport = async (
+    filters: Filter[],
+    selectedTableName: string | null
+  ): Promise<void> => {
+    try {
+      if (!selectedTableName) {
+        throw new Error("Selected table name is required.");
+      }
+
+      const rawResults = await handleCreateReport(filters, selectedTableName);
+
+      const results = rawResults.map((result) => ({
+        id: result.id,
+        fields: result.fields,
+      }));
+
+      // Prepare the report data
+      const reportData = {
+        tableName: selectedTableName,
+        filters: filters.map((filter) => ({
+          column: filter.column,
+          values: filter.values,
+          booleanValue: filter.booleanValue,
+          range: filter.range,
+        })),
+        results,
+        author: "currentUser",
+        createdAt: new Date(),
+      };
+
+      createReport(reportData, {
+        onSuccess: (createdReport) => {
+          console.log("Created report is here:", createdReport);
+          navigate(`/reports/${createdReport.id}`);
+        },
+        onError: (error) => {
+          console.error("Error creating report:", error);
+        },
+      });
+    } catch (error) {
+      console.error("Error creating report:", error);
+    }
+  };
+
   const handleTableSelect = async (tableName: string) => {
     try {
       setIsLoading(true);
       setSelectedTableName(tableName);
 
-      const fetchedColumns = await fetchColumnNames(tableName);
+      const fetchedColumns = await fetchColumnNames(
+        tableName,
+        data!.databaseID
+      );
       if (!fetchedColumns || fetchedColumns.length === 0) {
         console.error("No columns found for the table:", tableName);
         setColumns([]);
@@ -97,7 +146,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
       }
       setColumns(fetchedColumns);
 
-      const tableData = await fetchTableData(tableName);
+      const tableData = await fetchTableData(tableName, data!.databaseID);
 
       const columnData = fetchedColumns.reduce((acc, column) => {
         acc[column] = tableData
@@ -331,6 +380,12 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                   ))}
                 </ScrollArea>
                 <div className="flex flex-col gap-4">
+                  <Link
+                    to="/reports"
+                    className="text-center cursor-pointer mt-8 transition-colors hover:text-gray-500"
+                  >
+                    Посмотреть отчеты
+                  </Link>
                   <Button
                     variant="outline"
                     onClick={() => addFilter(setFilters, filters)}
@@ -340,32 +395,9 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                     Добавить фильтр
                   </Button>
                   <Button
-                    onClick={async () => {
-                      try {
-                        const results = await handleCreateReport(
-                          filters,
-                          selectedTableName
-                        );
-
-                        createReport({
-                          tableName: selectedTableName!,
-                          filters: filters.map((filter) => ({
-                            column: filter.column,
-                            values: filter.values,
-                            booleanValue: filter.booleanValue,
-                            range: filter.range,
-                          })),
-                          results: results.map((result) => ({
-                            id: result.id,
-                            fields: result.fields,
-                          })),
-                          author: "currentUser",
-                          createdAt: new Date(),
-                        });
-                      } catch (error) {
-                        console.error("Error creating report:", error);
-                      }
-                    }}
+                    onClick={() =>
+                      processAndCreateReport(filters, selectedTableName)
+                    }
                     className="w-full"
                     disabled={isReportLoading}
                   >
@@ -378,12 +410,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
         </CardContent>
       </Card>
       <div className="w-full flex flex-col items-center justify-center">
-        <Link
-          to="/reports"
-          className="text-center cursor-pointer mt-8 transition-colors hover:text-gray-500"
-        >
-          Посмотреть отчеты
-        </Link>
         <Link
           to="/databases"
           className="text-center cursor-pointer mt-4 transition-colors hover:text-gray-500"
