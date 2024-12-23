@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, SetStateAction } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -42,7 +42,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   const [filters, setFilters] = useState<Filter[]>([]);
   const { data } = useSpecificDatabaseData(id);
   const [currentValue, setCurrentValue] = useState("");
-  const [columns, setColumns] = useState<string[] | undefined>([]);
+  const [columns, setColumns] = useState<any>([]);
   const [tableNames, setTableNames] = useState<string[]>([]);
   const [columnData, setColumnData] = useState<any>({});
   const [selectedTableName, setSelectedTableName] = useState<string | null>(
@@ -61,7 +61,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
         const fetchedTableNames = await fetchTableNames(data?.databaseID);
         setTableNames(fetchedTableNames);
 
-        // Optionally fetch columns for the first table
         if (fetchedTableNames.length > 0) {
           setSelectedTableName(fetchedTableNames[0]);
           const fetchedColumns = await fetchColumnNames(
@@ -148,7 +147,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
 
       const tableData = await fetchTableData(tableName, data!.databaseID);
 
-      const columnData = fetchedColumns.reduce((acc, column) => {
+      const columnData = fetchedColumns.reduce((acc: any, column: any) => {
         acc[column] = tableData
           .map((row) => {
             const value = row[column];
@@ -235,7 +234,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                             <SelectValue placeholder="Выберите фильтр" />
                           </SelectTrigger>
                           <SelectContent>
-                            {columns?.map((column) => (
+                            {columns?.map((column: string) => (
                               <SelectItem key={column} value={column}>
                                 {column}
                               </SelectItem>
@@ -319,13 +318,22 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                     <SelectValue placeholder="Выберите значение" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {columnData[filter.column]?.map(
-                                      (value: string, index: number) => (
-                                        <SelectItem key={index} value={value}>
-                                          {value}
-                                        </SelectItem>
-                                      )
-                                    )}
+                                    {Array.from(
+                                      new Set(
+                                        columnData[filter.column]
+                                          ?.flatMap((value: string) =>
+                                            value.split(", ")
+                                          ) // Split concatenated values
+                                          .map((value: string) => value.trim()) // Trim each value
+                                      ) || [] // Fallback to empty array if columnData[filter.column] is undefined
+                                    ).map((uniqueValue: any, index: number) => (
+                                      <SelectItem
+                                        key={index}
+                                        value={uniqueValue}
+                                      >
+                                        {uniqueValue}
+                                      </SelectItem>
+                                    ))}
                                   </SelectContent>
                                 </Select>
                               )}

@@ -10,6 +10,8 @@ export const fetchTableData = async (tableName: string, baseID: string) => {
 
     const columnValues = records.map((record) => record.fields);
 
+    console.log("column values:", columnValues);
+
     return columnValues;
   } catch (error) {
     console.error("Error fetching table data:", error);

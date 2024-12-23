@@ -6,11 +6,22 @@ export const fetchColumnNames = async (tableName: string, baseID: string) => {
   }).base(baseID);
 
   try {
-    const records = await base(tableName).select({ maxRecords: 1 }).firstPage();
+    const records = await base(tableName).select({}).firstPage();
+
+    console.log(
+      "records:",
+      records.map((record) => record.fields)
+    );
 
     if (records.length > 0) {
-      const allColumns = Object.keys(records[0].fields); // Extract all column names
-      return allColumns.filter((columnName) => columnName !== "Name"); // Exclude "Name"
+      const allColumns = new Set();
+      records.forEach((record) => {
+        Object.keys(record.fields).forEach((field) => allColumns.add(field));
+      });
+      console.log("All detected columns:", Array.from(allColumns));
+      return Array.from(allColumns).filter(
+        (columnName) => columnName !== "Name"
+      );
     }
   } catch (error) {
     console.error("Error fetching column names:", error);
