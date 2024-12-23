@@ -18,6 +18,7 @@ import { useDatabasesData } from "@/entities/databases/api/use-get-databases";
 import { useCreateDatabase } from "@/entities/databases/api/use-create-databases";
 import { useNavigate } from "react-router";
 import { LoadingScreen } from "@/shared/ui/loading";
+import { useDeleteDatabase } from "@/entities/databases/api/use-delete-database";
 
 export default function DatabasesWidget() {
   const [newDatabaseId, setNewDatabaseId] = useState("");
@@ -26,6 +27,7 @@ export default function DatabasesWidget() {
   const navigate = useNavigate();
   const { data, isLoading } = useDatabasesData();
   const { mutate: addDatabase, isPending } = useCreateDatabase();
+  const { mutate: deleteDatabase } = useDeleteDatabase();
 
   const handleAddDatabase = () => {
     addDatabase(
@@ -108,7 +110,11 @@ export default function DatabasesWidget() {
                   <Database className="h-5 w-5 mr-2" />
                   <span>{db.name}</span>
                 </div>
-                <Button variant="ghost" size="icon">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteDatabase(db.id)}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -20,7 +20,6 @@ import { removeValueFromFilter } from "@/shared/utils/removeValueFromFilter";
 import { addFilter } from "@/shared/utils/addFilter";
 import { fetchColumnNames } from "@/entities/tables/api/fetch-column-names";
 import { fetchTableData } from "@/entities/tables/api/fetch-air-table-data";
-import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingScreen } from "@/shared/ui/loading";
 import { Link, useNavigate } from "react-router-dom";
 import { useCreateReport } from "@/entities/reports/api/use-create-report";
@@ -252,57 +251,78 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                         </Button>
                       </div>
                       <div className="space-y-2">
-                        <div className="flex gap-2 items-center ">
+                        <div className="flex gap-2 items-center">
                           {filter.column && (
                             <>
-                              {typeof columnData[filter.column]?.[0] ===
-                              "boolean" ? (
-                                <Checkbox
-                                  checked={filter.booleanValue}
-                                  onCheckedChange={(checked) =>
-                                    addValueToFilter(
-                                      setFilters,
-                                      filters,
-                                      filter.id,
-                                      checked,
-                                      setCurrentValue,
-                                      filter.column
-                                    )
-                                  }
-                                >
-                                  Checkbox
-                                </Checkbox>
-                              ) : typeof columnData[filter.column]?.[0] ===
-                                "number" ? (
-                                // Number (range)
+                              {columnData[filter.column]?.some(
+                                (value: string) =>
+                                  /^\d+\+\s*$/.test(value) ||
+                                  /^\d+-\d+$/.test(value)
+                              ) ? (
                                 <div className="flex gap-2">
                                   <Input
                                     type="number"
-                                    placeholder="Min"
-                                    value={filter?.range?.min || ""}
-                                    // onChange={(e) =>
-                                    //   updateFilterRange(
-                                    //     filter.id,
-                                    //     "min",
-                                    //     e.target.value
-                                    //   )
-                                    // }
+                                    placeholder={`Введите ${filter.column}`}
+                                    value={currentValue || ""}
+                                    onChange={(e) =>
+                                      setCurrentValue(e.target.value)
+                                    }
                                   />
-                                  <Input
-                                    type="number"
-                                    placeholder="Max"
-                                    value={filter?.range?.max || ""}
-                                    // onChange={(e) =>
-                                    //   updateFilterRange(
-                                    //     filter.id,
-                                    //     "max",
-                                    //     e.target.value
-                                    //   )
-                                    // }
-                                  />
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      const userValue =
+                                        parseFloat(currentValue);
+                                      if (!isNaN(userValue)) {
+                                        // Фильтрация строк по совпадению с диапазоном
+                                        const matchingRows = columnData[
+                                          filter.column
+                                        ]?.filter((value: string) => {
+                                          // Диапазон: "300-600"
+                                          const rangeMatch =
+                                            value.match(/^(\d+)-(\d+)$/);
+                                          if (rangeMatch) {
+                                            const min = parseFloat(
+                                              rangeMatch[1]
+                                            );
+                                            const max = parseFloat(
+                                              rangeMatch[2]
+                                            );
+                                            return (
+                                              userValue >= min &&
+                                              userValue <= max
+                                            );
+                                          }
+
+                                          // Пороговое значение: "600+"
+                                          const thresholdMatch =
+                                            value.match(/^(\d+)\+$/);
+                                          if (thresholdMatch) {
+                                            const min = parseFloat(
+                                              thresholdMatch[1]
+                                            );
+                                            return userValue >= min;
+                                          }
+
+                                          return false; // Если значение не подходит под форматы
+                                        });
+
+                                        // Добавление совпадающих строк в фильтры
+                                        addValueToFilter(
+                                          setFilters,
+                                          filters,
+                                          filter.id,
+                                          matchingRows.join(", "), // Присоединяем совпавшие диапазоны
+                                          setCurrentValue
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    Применить
+                                  </Button>
                                 </div>
                               ) : (
-                                // String (with dropdown for available values)
+                                // Выпадающий список для нечисловых значений
                                 <Select
                                   onValueChange={(value) =>
                                     addValueToFilter(
@@ -323,9 +343,9 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                         columnData[filter.column]
                                           ?.flatMap((value: string) =>
                                             value.split(", ")
-                                          ) // Split concatenated values
-                                          .map((value: string) => value.trim()) // Trim each value
-                                      ) || [] // Fallback to empty array if columnData[filter.column] is undefined
+                                          )
+                                          .map((value: string) => value.trim())
+                                      ) || []
                                     ).map((uniqueValue: any, index: number) => (
                                       <SelectItem
                                         key={index}
@@ -339,32 +359,16 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                               )}
                             </>
                           )}
-                          {/* Кнопка добавления значения */}
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() =>
-                              addValueToFilter(
-                                setFilters,
-                                filters,
-                                filter.id,
-                                currentValue,
-                                setCurrentValue
-                              )
-                            }
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
                         </div>
 
-                        {/* Отображение добавленных фильтров */}
+                        {/* Выбранные значения */}
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {filter.values.map((value, index) => (
+                          {filter.values.map((value: string, index: number) => (
                             <div
                               key={index}
                               className="flex items-center gap-1 bg-secondary text-secondary-foreground px-2 py-1 rounded-md"
                             >
-                              <span>{value.toString()}</span>
+                              <span>{value}</span>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -378,7 +382,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                   )
                                 }
                               >
-                                <X className="h-3 w-3" />
+                                ✕
                               </Button>
                             </div>
                           ))}
