@@ -92,7 +92,11 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
         throw new Error("Selected table name is required.");
       }
 
-      const rawResults = await handleCreateReport(filters, selectedTableName);
+      const rawResults = await handleCreateReport(
+        filters,
+        selectedTableName,
+        data!.databaseID
+      );
 
       const results = rawResults.map((result) => ({
         id: result.id,
