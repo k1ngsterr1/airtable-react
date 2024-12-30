@@ -20,7 +20,6 @@ import { LoadingScreen } from "@/shared/ui/loading";
 import { Link, useNavigate } from "react-router-dom";
 import { useCreateReport } from "@/entities/reports/api/use-create-report";
 import { handleCreateReport } from "@/shared/utils/createReport";
-import { addValueToFilter } from "@/shared/utils/addValueToFilter";
 import { Input } from "@/components/ui/input";
 import { removeFilter } from "@/shared/utils/removeFilter";
 
@@ -42,7 +41,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
     Record<string, Filter[]>
   >({});
   const { data } = useSpecificDatabaseData(id);
-  const [currentValue, setCurrentValue] = useState("");
   const [tableNames, setTableNames] = useState<string[]>([]);
   const [columnData, setColumnData] = useState<any>({});
   const [tableData, setTableData] = useState<
@@ -262,12 +260,20 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                     <div key={tableName}>
                       <h3 className="text-lg font-semibold">{tableName}</h3>
 
-                      {/* Render each filter */}
-                      {filtersByTable[tableName]?.map((filter) => (
+                      {/* Проверка: если фильтры отсутствуют */}
+                      {!filtersByTable[tableName]?.length && (
+                        <p className="text-red-500 text-sm mt-2">
+                          Пожалуйста, добавьте хотя бы один фильтр.
+                        </p>
+                      )}
+
+                      {/* Отображение фильтров */}
+                      {filtersByTable[tableName]?.map((filter: any) => (
                         <div
                           key={filter.id}
                           className="mb-4 p-4 border rounded-lg"
                         >
+                          {/* Выбор столбца для фильтрации */}
                           <Select
                             value={filter.column}
                             onValueChange={(value) => {
@@ -275,7 +281,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                 ...prev,
                                 [tableName]: prev[tableName].map((f) =>
                                   f.id === filter.id
-                                    ? { ...f, column: value }
+                                    ? { ...f, column: value, values: [] } // Очистить значения при изменении столбца
                                     : f
                                 ),
                               }));
@@ -295,7 +301,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                             </SelectContent>
                           </Select>
 
-                          {/* Additional Logic for Numerical/Dropdown Filters */}
+                          {/* Логика для числовых фильтров */}
                           {filter.column && (
                             <>
                               {tableData[tableName]?.columnData[
@@ -305,28 +311,34 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                   /^\d+\+\s*$/.test(value) ||
                                   /^\d+-\d+$/.test(value)
                               ) ? (
-                                <div className="flex gap-2 mt-4">
+                                <div className="flex flex-col gap-2 mt-4">
                                   <Input
                                     type="number"
-                                    placeholder={`Введите ${filter.column}`}
-                                    value={currentValue || ""}
-                                    onChange={(e) =>
-                                      setCurrentValue(e.target.value)
-                                    }
-                                  />
-                                  <div className="flex items-center">
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => {
-                                        const userValue =
-                                          parseFloat(currentValue);
+                                    placeholder={`Введите значение для ${filter.column} и нажмите Enter`}
+                                    value={filter.inputValue || ""}
+                                    onChange={(e) => {
+                                      const userValue = e.target.value.trim();
+                                      setFiltersByTable((prev) => ({
+                                        ...prev,
+                                        [tableName]: prev[tableName].map((f) =>
+                                          f.id === filter.id
+                                            ? { ...f, inputValue: userValue }
+                                            : f
+                                        ),
+                                      }));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        const userValue = parseFloat(
+                                          filter.inputValue || ""
+                                        );
                                         if (!isNaN(userValue)) {
-                                          // Filter rows based on range or threshold
+                                          // Найти подходящий диапазон
                                           const matchingRows = tableData[
                                             tableName
                                           ]?.columnData[filter.column]?.filter(
                                             (value: string) => {
-                                              // Range format: "300-600"
+                                              // Формат диапазона: "300-600"
                                               const rangeMatch =
                                                 value.match(/^(\d+)-(\d+)$/);
                                               if (rangeMatch) {
@@ -342,7 +354,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                                 );
                                               }
 
-                                              // Threshold format: "600+"
+                                              // Формат порога: "600+"
                                               const thresholdMatch =
                                                 value.match(/^(\d+)\+$/);
                                               if (thresholdMatch) {
@@ -352,54 +364,68 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                                 return userValue >= min;
                                               }
 
-                                              return false; // If value doesn't match formats
+                                              return false; // Если значение не соответствует форматам
                                             }
                                           );
 
-                                          // Add matching rows to the filter
-                                          addValueToFilter(
-                                            setFiltersByTable,
-                                            filtersByTable,
-                                            tableName,
-                                            filter.id,
-                                            matchingRows.join(", "),
-                                            setCurrentValue,
-                                            filter.column
-                                          );
+                                          // Если есть подходящие диапазоны, обновить фильтр
+                                          if (matchingRows?.length > 0) {
+                                            setFiltersByTable((prev) => ({
+                                              ...prev,
+                                              [tableName]: prev[tableName].map(
+                                                (f) =>
+                                                  f.id === filter.id
+                                                    ? {
+                                                        ...f,
+                                                        values: [
+                                                          ...new Set([
+                                                            ...f.values,
+                                                            ...matchingRows,
+                                                          ]),
+                                                        ], // Исключить дубли
+                                                        inputValue: "", // Очистить поле ввода
+                                                      }
+                                                    : f
+                                              ),
+                                            }));
+                                          } else {
+                                            alert(
+                                              "Значение не соответствует ни одному диапазону!"
+                                            );
+                                          }
                                         }
-                                      }}
-                                    >
-                                      Применить
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() =>
-                                        removeFilter(
-                                          setFiltersByTable,
-                                          tableName,
-                                          filter.id
-                                        )
                                       }
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
+                                    }}
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      removeFilter(
+                                        setFiltersByTable,
+                                        tableName,
+                                        filter.id
+                                      )
+                                    }
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
                                 </div>
                               ) : (
-                                // Dropdown for non-numerical values
                                 <div className="flex items-center">
                                   <Select
                                     onValueChange={(value) => {
-                                      console.log("Selected value:", value);
-                                      addValueToFilter(
-                                        setFiltersByTable,
-                                        filtersByTable,
-                                        tableName,
-                                        filter.id,
-                                        value,
-                                        setCurrentValue
-                                      );
+                                      setFiltersByTable((prev) => ({
+                                        ...prev,
+                                        [tableName]: prev[tableName].map((f) =>
+                                          f.id === filter.id
+                                            ? {
+                                                ...f,
+                                                values: [...f.values, value],
+                                              }
+                                            : f
+                                        ),
+                                      }));
                                     }}
                                   >
                                     <SelectTrigger className="mt-4">
@@ -458,26 +484,28 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                             </>
                           )}
 
-                          {/* Display Filter Values */}
+                          {/* Отображение выбранных значений фильтра */}
                           <div className="mt-4">
                             <h5 className="font-semibold">
                               Выбранные значения:
                             </h5>
                             <div className="flex flex-wrap gap-2">
-                              {filter.values.map((value, index) => (
-                                <span
-                                  key={index}
-                                  className="bg-gray-200 px-2 py-1 rounded"
-                                >
-                                  {value}
-                                </span>
-                              ))}
+                              {filter.values.map(
+                                (value: any, index: number) => (
+                                  <span
+                                    key={index}
+                                    className="bg-gray-200 px-2 py-1 rounded"
+                                  >
+                                    {value}
+                                  </span>
+                                )
+                              )}
                             </div>
                           </div>
                         </div>
                       ))}
 
-                      {/* Add Filter Button */}
+                      {/* Кнопка "Добавить фильтр" */}
                       <Button
                         variant="outline"
                         onClick={() =>

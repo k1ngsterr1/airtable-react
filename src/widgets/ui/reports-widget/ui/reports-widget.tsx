@@ -30,7 +30,8 @@ export function ReportsWidget() {
             className="p-4 border rounded-lg shadow-sm flex flex-col gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
           >
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">{report.tableName}</h2>
+              <h2 className="text-lg font-semibold">{report.tableName}</h2>{" "}
+              {/* Name */}
               <Button
                 variant="ghost"
                 size="icon"
