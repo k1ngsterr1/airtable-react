@@ -24,14 +24,18 @@ export function ReportsWidget() {
       </div>
       <h1 className="text-3xl font-bold text-center mb-6">Список отчетов</h1>
       <div className="space-y-4">
-        {reports?.map((report) => (
+        {reports?.map((report: any, index) => (
           <div
             key={report.id}
             className="p-4 border rounded-lg shadow-sm flex flex-col gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
           >
+            {/* Header with Report Name */}
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">{report.tableName}</h2>{" "}
-              {/* Name */}
+              <div>
+                <h2 className="text-lg font-semibold">{report.tableName}</h2>{" "}
+                {/* Table Name */}
+                <p className="text-xl text-gray-500">Имя отчета: {index + 1}</p>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
@@ -41,6 +45,8 @@ export function ReportsWidget() {
                 <X className="h-4 w-4 text-red-500" />
               </Button>
             </div>
+
+            {/* Additional Report Details */}
             <div className="flex gap-2 flex-wrap">
               <span className="text-sm text-gray-600">
                 Создано: {new Date(report.createdAt).toLocaleDateString()}

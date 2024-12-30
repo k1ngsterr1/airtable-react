@@ -39,8 +39,12 @@ export function SpecificReportWidget() {
         const tableResults = report.results.filter(
           (result: any) => result.tableName === tableName
         );
+
+        // Ensure "Name" is the first header
         const headers = tableResults.length
-          ? Object.keys(tableResults[0].fields || {})
+          ? Object.keys(tableResults[0].fields || {}).sort((a, b) =>
+              a === "Name" ? -1 : b === "Name" ? 1 : 0
+            )
           : [];
 
         return (
