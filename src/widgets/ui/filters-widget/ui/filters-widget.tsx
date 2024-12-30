@@ -344,20 +344,35 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                   <SelectContent>
                                     {Array.from(
                                       new Set(
-                                        columnData[filter.column]
-                                          ?.flatMap((value: string) =>
-                                            value.split(", ")
-                                          )
-                                          .map((value: string) => value.trim())
+                                        columnData[filter.column]?.flatMap(
+                                          (value: string) =>
+                                            value
+                                              .split(/, (?![^(]*\))/) // Split at commas not within parentheses
+                                              .map((v) => v.trim())
+                                        )
                                       ) || []
-                                    ).map((uniqueValue: any, index: number) => (
-                                      <SelectItem
-                                        key={index}
-                                        value={uniqueValue}
-                                      >
-                                        {uniqueValue}
-                                      </SelectItem>
-                                    ))}
+                                    )
+                                      .sort((a: any, b: any) => {
+                                        if (
+                                          !isNaN(Number(a)) &&
+                                          !isNaN(Number(b))
+                                        ) {
+                                          return Number(a) - Number(b); // Numerical sort
+                                        }
+                                        return a.localeCompare(b, undefined, {
+                                          numeric: true,
+                                        });
+                                      })
+                                      .map(
+                                        (uniqueValue: any, index: number) => (
+                                          <SelectItem
+                                            key={index}
+                                            value={uniqueValue}
+                                          >
+                                            {uniqueValue}
+                                          </SelectItem>
+                                        )
+                                      )}
                                   </SelectContent>
                                 </Select>
                               )}
