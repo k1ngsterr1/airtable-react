@@ -17,11 +17,8 @@ import { useGetSpecificReport } from "@/entities/reports/api/use-get-specific-re
 export function SpecificReportWidget() {
   const { id } = useParams<{ id: string }>();
   const { data: report, isLoading, isError, error } = useGetSpecificReport(id);
-  const headers = report?.results.length
-    ? Object.keys(report.results[0].fields || {})
-    : [];
 
-  console.log("headers:", headers);
+  console.log("Report data:", report);
 
   if (isLoading) return <LoadingScreen fullScreen />;
   if (isError) return <p>Error: {error.message}</p>;
@@ -33,54 +30,69 @@ export function SpecificReportWidget() {
       <h1 className="text-3xl font-bold text-center mb-6">
         Отчет: {report.tableName}
       </h1>
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Использованные фильтры:</h2>
-        <div className="flex flex-wrap gap-2">
-          {report?.filters.map((filter: any, index: number) => (
-            <Badge key={index} variant="secondary">
-              {filter.column}: {filter.values.join(", ")}
-            </Badge>
-          ))}
-        </div>
-      </div>
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Применимые требования:</h2>
-        <div className="overflow-x-auto">
-          <Table className="w-[1500px]">
-            <TableHeader>
-              <TableRow>
-                {headers.map((header, index) => (
-                  <TableHead key={index}>{header}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {report?.results.map((result, index) => {
-                // Match the filter for the current result
-                const matchedFilter = report.filters.find((filter) =>
-                  Object.keys(result.fields || {}).includes(filter.column)
-                );
 
-                return (
-                  <TableRow key={index}>
-                    {headers.map((header, index) => (
-                      <TableCell key={index}>
-                        {Array.isArray(result.fields[header])
-                          ? result.fields[header]?.join(", ") || "No Data"
-                          : result.fields[header] || "No Data"}
-                      </TableCell>
+      {report.tableNames.map((tableName: string) => {
+        const tableFilters =
+          report.filters.find(
+            (filterGroup: any) => filterGroup.tableName === tableName
+          )?.filters || [];
+        const tableResults = report.results.filter(
+          (result: any) => result.tableName === tableName
+        );
+        const headers = tableResults.length
+          ? Object.keys(tableResults[0].fields || {})
+          : [];
+
+        return (
+          <div key={tableName} className="space-y-8">
+            {/* Filters for the Table */}
+            <div>
+              <h2 className="text-xl font-semibold">{tableName}: Фильтры</h2>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {tableFilters.map((filter: any, index: number) => (
+                  <Badge key={index} variant="secondary">
+                    {filter.column}:{" "}
+                    {Array.isArray(filter.values)
+                      ? filter.values.join(", ")
+                      : "No values"}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Results for the Table */}
+            <div>
+              <h2 className="text-xl font-semibold">{tableName}: Результаты</h2>
+              <div className="overflow-x-auto">
+                <Table className="w-[1500px]">
+                  <TableHeader>
+                    <TableRow>
+                      {headers.map((header, index) => (
+                        <TableHead key={index}>{header}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tableResults.map((result: any, index: number) => (
+                      <TableRow key={index}>
+                        {headers.map((header, cellIndex) => (
+                          <TableCell key={cellIndex}>
+                            {Array.isArray(result.fields[header])
+                              ? result.fields[header]?.join(", ") || "No Data"
+                              : result.fields[header] || "No Data"}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))}
-                    <TableCell>
-                      {/* Render the matched filter name */}
-                      {matchedFilter ? matchedFilter.column : "No Filter Name"}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Back Button */}
       <div className="flex w-full items-center justify-center">
         <Link to="/reports" className="mt-8">
           <Button variant="outline">Вернуться к списку отчетов</Button>

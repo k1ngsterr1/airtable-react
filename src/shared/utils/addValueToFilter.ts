@@ -1,12 +1,15 @@
 import { Filter } from "./types";
 
 export const addValueToFilter = (
-  setFilters: React.Dispatch<React.SetStateAction<Filter[]>>,
-  filters: Filter[],
+  setFiltersByTable: React.Dispatch<
+    React.SetStateAction<Record<string, Filter[]>>
+  >, // Now operates on the entire filtersByTable object
+  filtersByTable: Record<string, Filter[]>,
+  tableName: string, // Add tableName to specify which table's filters to update
   id: string,
   currentValue: boolean | string,
   setCurrentValue: React.Dispatch<React.SetStateAction<string>>,
-  columnName?: string // Pass the column name to format the value
+  columnName?: string // Optional column name for formatting
 ): void => {
   if (typeof currentValue === "string" && !currentValue.trim()) return;
 
@@ -15,17 +18,21 @@ export const addValueToFilter = (
       ? `${columnName}(${currentValue ? "true" : "false"})`
       : currentValue;
 
-  setFilters(
-    filters.map((filter) => {
+  // Ensure filtersByTable[tableName] exists
+  const currentFilters = filtersByTable[tableName] || [];
+
+  setFiltersByTable({
+    ...filtersByTable,
+    [tableName]: currentFilters.map((filter) => {
       if (filter.id === id) {
         return {
           ...filter,
-          values: [...filter.values, formattedValue], // Save formatted value
+          values: [...filter.values, formattedValue], // Update values for the matching filter
         };
       }
       return filter;
-    })
-  );
+    }),
+  });
 
   setCurrentValue("");
 };

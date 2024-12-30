@@ -34,47 +34,56 @@ const generateFilterFormula = (filters: Filter[]): string => {
 
 // Fetch filtered records from Airtable
 export const handleCreateReport = async (
-  filters: Filter[],
-  selectedTableName: string | null,
+  tableFilters: { tableName: string; filters: Filter[] }[], // Filters grouped by table
   baseID: string
-): Promise<{ id: string; fields: any }[]> => {
+): Promise<{ id: string; fields: any; tableName: string }[]> => {
   const base = new Airtable({
     apiKey: import.meta.env.VITE_API_KEY,
   }).base(baseID);
 
-  // Validate input
-  if (!selectedTableName || filters.length === 0) {
-    console.error("Table name or filters are missing");
-    return []; // Return an empty array if the input is invalid
+  if (!tableFilters || tableFilters.length === 0) {
+    console.error("No filters or table names provided.");
+    return [];
   }
-
-  // Generate the filterByFormula
-  const filterByFormula = generateFilterFormula(filters);
-
-  if (!filterByFormula) {
-    console.error("Generated filterByFormula is empty. Skipping query.");
-    return []; // Return an empty array if formula generation failed
-  }
-
-  console.log("Generated filter by formula:", filterByFormula);
 
   try {
-    // Fetch records from Airtable using the generated formula
-    const records = await base(selectedTableName)
-      .select({
-        filterByFormula,
-      })
-      .all();
+    const allRecords: { id: string; fields: any; tableName: string }[] = [];
 
-    console.log("Records fetched successfully:", records);
+    for (const { tableName, filters } of tableFilters) {
+      const filterByFormula = generateFilterFormula(filters);
 
-    // Map and return the records with id and fields
-    return records.map((record) => ({
-      id: record.id,
-      fields: record.fields,
-    }));
+      if (!filterByFormula) {
+        console.error(
+          `Generated filterByFormula is empty for table ${tableName}`
+        );
+        continue;
+      }
+
+      try {
+        const records = await base(tableName)
+          .select({
+            filterByFormula,
+          })
+          .all();
+
+        const mappedRecords = records.map((record) => ({
+          id: record.id,
+          fields: record.fields,
+          tableName,
+        }));
+
+        allRecords.push(...mappedRecords);
+      } catch (tableError) {
+        console.error(
+          `Error fetching records from table ${tableName}:`,
+          tableError
+        );
+      }
+    }
+
+    return allRecords;
   } catch (error) {
     console.error("Error fetching filtered records:", error);
-    return []; // Return an empty array on error
+    return [];
   }
 };

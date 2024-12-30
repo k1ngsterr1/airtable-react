@@ -1,9 +1,17 @@
-import { Filter, SetFilters } from "./types";
+import { Filter } from "./types";
 
 export const removeFilter = (
-  setFilters: SetFilters,
-  filters: Filter[],
-  id: string
+  setFiltersByTable: React.Dispatch<
+    React.SetStateAction<Record<string, Filter[]>>
+  >,
+  filtersByTable: Record<string, Filter[]>,
+  tableName: string,
+  filterId: string
 ): void => {
-  setFilters(filters.filter((filter) => filter.id !== id));
+  setFiltersByTable({
+    ...filtersByTable,
+    [tableName]: filtersByTable[tableName]?.filter(
+      (filter) => filter.id !== filterId
+    ),
+  });
 };

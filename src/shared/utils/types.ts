@@ -1,6 +1,7 @@
 export type Filter = {
   id: string;
   column: string;
+  table: string;
   values: string[];
 };
 
