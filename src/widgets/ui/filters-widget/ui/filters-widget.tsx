@@ -56,6 +56,10 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("filter by tables:", filtersByTable);
+  }, [filtersByTable]);
+
+  useEffect(() => {
     const fetchTableAndColumnNames = async () => {
       try {
         setIsLoading(true);
@@ -123,6 +127,19 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
 
   const processAndCreateReport = async () => {
     try {
+      const hasUnfilledFilters =
+        Object.keys(filtersByTable).length === 0 || // Нет таблиц с фильтрами
+        Object.values(filtersByTable).some((filters) =>
+          filters.some((filter) => !filter.column || filter.values.length === 0)
+        );
+
+      if (hasUnfilledFilters) {
+        alert(
+          "Пожалуйста, добавьте и заполните все фильтры перед созданием отчета!"
+        );
+        return;
+      }
+
       const tableFilters = Object.keys(filtersByTable).map((tableName) => ({
         tableName,
         filters: filtersByTable[tableName] || [],
@@ -314,7 +331,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                 <div className="flex flex-col gap-2 mt-4">
                                   <Input
                                     type="number"
-                                    placeholder={`Введите значение для ${filter.column} и нажмите Enter`}
+                                    placeholder={`Введите значение для ${filter.column} `}
                                     value={filter.inputValue || ""}
                                     onChange={(e) => {
                                       const userValue = e.target.value.trim();
@@ -531,28 +548,21 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                   >
                     Посмотреть отчеты
                   </Link>
-                  {/* <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (selectedTableNames!.length === 1) {
-                        const tableName = selectedTableNames![0];
-                        addFilter(setFiltersByTable, filtersByTable, tableName); // Add filter to the specific table
-                      } else {
-                        console.error(
-                          "You must select exactly one table to add a filter."
-                        );
-                      }
-                    }}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Добавить фильтр
-                  </Button> */}
-
                   <Button
-                    onClick={processAndCreateReport} // No arguments needed
+                    onClick={processAndCreateReport}
                     className="w-full"
-                    disabled={isReportLoading}
+                    disabled={
+                      isReportLoading || // Проверка загрузки отчета
+                      Object.keys(filtersByTable).length === 0 || // Если filtersByTable пуст (нет добавленных фильтров)
+                      !Object.values(filtersByTable).some(
+                        (filters) =>
+                          filters.length > 0 && // Если есть хотя бы один фильтр
+                          filters.every(
+                            (filter) =>
+                              filter.column && filter.values.length > 0
+                          ) // И все фильтры заполнены
+                      )
+                    }
                   >
                     {isReportLoading ? "Загрузка..." : "Создать Отчёт"}
                   </Button>
