@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -22,6 +22,7 @@ import { useCreateReport } from "@/entities/reports/api/use-create-report";
 import { handleCreateReport } from "@/shared/utils/createReport";
 import { addValueToFilter } from "@/shared/utils/addValueToFilter";
 import { Input } from "@/components/ui/input";
+import { removeFilter } from "@/shared/utils/removeFilter";
 
 interface Filter {
   id: string;
@@ -42,9 +43,12 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   >({});
   const { data } = useSpecificDatabaseData(id);
   const [currentValue, setCurrentValue] = useState("");
-  const [columns, setColumns] = useState<any>([]);
   const [tableNames, setTableNames] = useState<string[]>([]);
   const [columnData, setColumnData] = useState<any>({});
+  const [tableData, setTableData] = useState<
+    Record<string, { columns: string[]; columnData: Record<string, any[]> }>
+  >({});
+
   const [selectedTableNames, setSelectedTableNames] = useState<string[] | null>(
     null
   );
@@ -63,11 +67,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
 
         if (fetchedTableNames.length > 0) {
           setSelectedTableNames([fetchedTableNames[0]]); // Default to the first table
-          const fetchedColumns = await fetchColumnNames(
-            fetchedTableNames[0],
-            data!.databaseID
-          );
-          setColumns(fetchedColumns);
         }
       } catch (error) {
         console.error("Error fetching table or column names:", error);
@@ -83,6 +82,46 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
       handleTableSelect(tableNames[0]);
     }
   }, [tableNames]);
+
+  useEffect(() => {
+    if (!selectedTableNames || selectedTableNames.length === 0) return;
+
+    const updateFiltersForSelectedTable = async () => {
+      try {
+        const tableName = selectedTableNames[selectedTableNames.length - 1]; // Последняя выбранная таблица
+        const fetchedColumns = await fetchColumnNames(
+          tableName,
+          data!.databaseID
+        );
+        // setColumns(fetchedColumns);
+
+        const tableData = await fetchTableData(tableName, data!.databaseID);
+
+        const updatedColumnData = fetchedColumns?.reduce(
+          (acc: any, column: any) => {
+            acc[column] = tableData
+              .map((row) => {
+                const value = row[column];
+                if (typeof value === "boolean") return value;
+                if (typeof value === "string" || typeof value === "number")
+                  return value.toString();
+                if (Array.isArray(value)) return value.join(", ");
+                return null;
+              })
+              .filter((value) => value !== null);
+            return acc;
+          },
+          {}
+        );
+
+        setColumnData(updatedColumnData);
+      } catch (error) {
+        console.error("Error updating filters for selected table:", error);
+      }
+    };
+
+    updateFiltersForSelectedTable();
+  }, [selectedTableNames, data]);
 
   const processAndCreateReport = async () => {
     try {
@@ -128,57 +167,52 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
     try {
       setIsLoading(true);
 
-      // Toggle table selection
       setSelectedTableNames((prev: any) => {
         if (prev.includes(tableName)) {
-          // Remove the table if already selected
+          // Удалить таблицу из выбранных
           return prev.filter((name: string) => name !== tableName);
         }
-        // Add the table to the selection
+        // Добавить таблицу в выбранные
         return [...prev, tableName];
       });
 
-      // Fetch columns and data for the selected table
+      // Если данные таблицы уже загружены, пропустите
+      if (tableData[tableName]) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Фетч колонок
       const fetchedColumns = await fetchColumnNames(
         tableName,
         data!.databaseID
       );
-      if (!fetchedColumns || fetchedColumns.length === 0) {
-        console.error("No columns found for the table:", tableName);
-        setColumns([]);
-        setColumnData({});
-        return;
-      }
-      setColumns(fetchedColumns);
 
-      const tableData = await fetchTableData(tableName, data!.databaseID);
+      // Фетч данных таблицы
+      const tableRows = await fetchTableData(tableName, data!.databaseID);
 
-      const columnData = fetchedColumns.reduce((acc: any, column: any) => {
-        acc[column] = tableData
-          .map((row) => {
-            const value = row[column];
-            if (typeof value === "boolean") {
-              // Add boolean values directly
-              return value;
-            } else if (typeof value === "string" || typeof value === "number") {
-              return value.toString();
-            } else if (Array.isArray(value)) {
-              return value.join(", ");
-            }
-            return null;
-          })
-          .filter((value) => value !== null); // Skip null or unsupported types
+      // Обработка данных таблицы
+      const columnData = fetchedColumns?.reduce((acc: any, column: any) => {
+        acc[column] = tableRows
+          .map((row) => row[column])
+          .filter((value) => value !== null && value !== undefined);
         return acc;
-      }, {} as Record<string, (string | boolean)[]>);
+      }, {});
 
-      setColumnData(columnData);
+      // Обновление состояния
+      setTableData((prev: any) => ({
+        ...prev,
+        [tableName]: {
+          columns: fetchedColumns,
+          columnData,
+        },
+      }));
     } catch (error) {
       console.error(
-        "Error fetching columns or data for the selected table:",
+        "Ошибка при загрузке данных для таблицы:",
+        tableName,
         error
       );
-      setColumns([]);
-      setColumnData({});
     } finally {
       setIsLoading(false);
     }
@@ -251,18 +285,22 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                               <SelectValue placeholder="Выберите фильтр" />
                             </SelectTrigger>
                             <SelectContent>
-                              {columns.map((column: string) => (
-                                <SelectItem key={column} value={column}>
-                                  {column}
-                                </SelectItem>
-                              ))}
+                              {tableData[tableName]?.columns.map(
+                                (column: string) => (
+                                  <SelectItem key={column} value={column}>
+                                    {column}
+                                  </SelectItem>
+                                )
+                              )}
                             </SelectContent>
                           </Select>
 
                           {/* Additional Logic for Numerical/Dropdown Filters */}
                           {filter.column && (
                             <>
-                              {columnData[filter.column]?.some(
+                              {tableData[tableName]?.columnData[
+                                filter.column
+                              ]?.some(
                                 (value: string) =>
                                   /^\d+\+\s*$/.test(value) ||
                                   /^\d+-\d+$/.test(value)
@@ -276,113 +314,146 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                       setCurrentValue(e.target.value)
                                     }
                                   />
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                      const userValue =
-                                        parseFloat(currentValue);
-                                      if (!isNaN(userValue)) {
-                                        // Filter rows based on range or threshold
-                                        const matchingRows = columnData[
-                                          filter.column
-                                        ]?.filter((value: string) => {
-                                          // Range format: "300-600"
-                                          const rangeMatch =
-                                            value.match(/^(\d+)-(\d+)$/);
-                                          if (rangeMatch) {
-                                            const min = parseFloat(
-                                              rangeMatch[1]
-                                            );
-                                            const max = parseFloat(
-                                              rangeMatch[2]
-                                            );
-                                            return (
-                                              userValue >= min &&
-                                              userValue <= max
-                                            );
-                                          }
+                                  <div className="flex items-center">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        const userValue =
+                                          parseFloat(currentValue);
+                                        if (!isNaN(userValue)) {
+                                          // Filter rows based on range or threshold
+                                          const matchingRows = tableData[
+                                            tableName
+                                          ]?.columnData[filter.column]?.filter(
+                                            (value: string) => {
+                                              // Range format: "300-600"
+                                              const rangeMatch =
+                                                value.match(/^(\d+)-(\d+)$/);
+                                              if (rangeMatch) {
+                                                const min = parseFloat(
+                                                  rangeMatch[1]
+                                                );
+                                                const max = parseFloat(
+                                                  rangeMatch[2]
+                                                );
+                                                return (
+                                                  userValue >= min &&
+                                                  userValue <= max
+                                                );
+                                              }
 
-                                          // Threshold format: "600+"
-                                          const thresholdMatch =
-                                            value.match(/^(\d+)\+$/);
-                                          if (thresholdMatch) {
-                                            const min = parseFloat(
-                                              thresholdMatch[1]
-                                            );
-                                            return userValue >= min;
-                                          }
+                                              // Threshold format: "600+"
+                                              const thresholdMatch =
+                                                value.match(/^(\d+)\+$/);
+                                              if (thresholdMatch) {
+                                                const min = parseFloat(
+                                                  thresholdMatch[1]
+                                                );
+                                                return userValue >= min;
+                                              }
 
-                                          return false; // If value doesn't match formats
-                                        });
+                                              return false; // If value doesn't match formats
+                                            }
+                                          );
 
-                                        // Add matching rows to the filter
-                                        addValueToFilter(
+                                          // Add matching rows to the filter
+                                          addValueToFilter(
+                                            setFiltersByTable,
+                                            filtersByTable,
+                                            tableName,
+                                            filter.id,
+                                            matchingRows.join(", "),
+                                            setCurrentValue,
+                                            filter.column
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      Применить
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() =>
+                                        removeFilter(
                                           setFiltersByTable,
-                                          filtersByTable,
                                           tableName,
-                                          filter.id,
-                                          matchingRows.join(", "),
-                                          setCurrentValue,
-                                          filter.column
-                                        );
+                                          filter.id
+                                        )
                                       }
-                                    }}
-                                  >
-                                    Применить
-                                  </Button>
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </div>
                               ) : (
                                 // Dropdown for non-numerical values
-                                <Select
-                                  onValueChange={(value) => {
-                                    console.log("Selected value:", value);
-                                    addValueToFilter(
-                                      setFiltersByTable,
-                                      filtersByTable,
-                                      tableName,
-                                      filter.id,
-                                      value,
-                                      setCurrentValue
-                                    );
-                                  }}
-                                >
-                                  <SelectTrigger className="mt-4">
-                                    <SelectValue placeholder="Выберите значение" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Array.from(
-                                      new Set(
-                                        columnData[filter.column]?.flatMap(
-                                          (value: string) =>
-                                            value
-                                              .split(/, (?![^(]*\))/)
-                                              .map((v) => v.trim())
-                                        )
-                                      ) || []
-                                    )
-                                      .sort((a: any, b: any) => {
-                                        if (
-                                          !isNaN(Number(a)) &&
-                                          !isNaN(Number(b))
-                                        ) {
-                                          return Number(a) - Number(b);
-                                        }
-                                        return a.localeCompare(b, undefined, {
-                                          numeric: true,
-                                        });
-                                      })
-                                      .map(
-                                        (uniqueValue: any, index: number) => (
-                                          <SelectItem
-                                            key={index}
-                                            value={uniqueValue}
-                                          >
-                                            {uniqueValue}
-                                          </SelectItem>
-                                        )
-                                      )}
-                                  </SelectContent>
-                                </Select>
+                                <div className="flex items-center">
+                                  <Select
+                                    onValueChange={(value) => {
+                                      console.log("Selected value:", value);
+                                      addValueToFilter(
+                                        setFiltersByTable,
+                                        filtersByTable,
+                                        tableName,
+                                        filter.id,
+                                        value,
+                                        setCurrentValue
+                                      );
+                                    }}
+                                  >
+                                    <SelectTrigger className="mt-4">
+                                      <SelectValue placeholder="Выберите значение" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Array.from(
+                                        new Set(
+                                          columnData[filter.column]?.flatMap(
+                                            (value: string) =>
+                                              value
+                                                .split(/, (?![^(]*\))/)
+                                                .map((v) => v.trim())
+                                          )
+                                        ) || []
+                                      )
+                                        .sort((a: any, b: any) => {
+                                          if (
+                                            !isNaN(Number(a)) &&
+                                            !isNaN(Number(b))
+                                          ) {
+                                            return Number(a) - Number(b);
+                                          }
+                                          return a.localeCompare(b, undefined, {
+                                            numeric: true,
+                                          });
+                                        })
+                                        .map(
+                                          (uniqueValue: any, index: number) => (
+                                            <SelectItem
+                                              key={index}
+                                              value={uniqueValue}
+                                            >
+                                              {uniqueValue}
+                                            </SelectItem>
+                                          )
+                                        )}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="mt-4"
+                                    onClick={() =>
+                                      removeFilter(
+                                        setFiltersByTable,
+                                        tableName,
+                                        filter.id
+                                      )
+                                    }
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               )}
                             </>
                           )}
@@ -403,25 +474,9 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                               ))}
                             </div>
                           </div>
-
-                          {/* Remove Filter Button */}
-                          {/* <Button
-                            variant="ghost"
-                            size="icon"
-                            className="mt-4"
-                            onClick={() =>
-                              removeFilter(
-                                setFiltersByTable,
-                                filtersByTable,
-                                tableName,
-                                filter.id
-                              )
-                            }
-                          >
-                            <X className="h-4 w-4" />
-                          </Button> */}
                         </div>
                       ))}
+
                       {/* Add Filter Button */}
                       <Button
                         variant="outline"
