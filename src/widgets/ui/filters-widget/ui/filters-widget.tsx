@@ -310,14 +310,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                           Добавить фильтр
                         </Button>
                       </div>
-
-                      {/* Проверка: если фильтры отсутствуют */}
-                      {!filtersByTable[tableName]?.length && (
-                        <p className="text-red-500 text-sm mt-2">
-                          Добавьте хотя бы один фильтр.
-                        </p>
-                      )}
-
                       {/* Отображение фильтров */}
                       {filtersByTable[tableName]?.map((filter: any) => (
                         <div
@@ -516,20 +508,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                         )}
                                     </SelectContent>
                                   </Select>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="mt-4"
-                                    onClick={() =>
-                                      removeFilter(
-                                        setFiltersByTable,
-                                        tableName,
-                                        filter.id
-                                      )
-                                    }
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
                                 </div>
                               )}
                             </>
@@ -610,7 +588,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
           to="/databases"
           className="text-center cursor-pointer mt-4 transition-colors hover:text-gray-500"
         >
-          Вернуться назад к вопросам
+          Вернуться назад к базам данных
         </Link>
         <Link
           to="/reports"

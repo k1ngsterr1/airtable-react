@@ -16,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useDatabasesData } from "@/entities/databases/api/use-get-databases";
 import { useCreateDatabase } from "@/entities/databases/api/use-create-databases";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { LoadingScreen } from "@/shared/ui/loading";
 import { useDeleteDatabase } from "@/entities/databases/api/use-delete-database";
 
@@ -122,6 +122,14 @@ export default function DatabasesWidget() {
           </ScrollArea>
         </CardContent>
       </Card>
+      <div className="w-full flex items-center justify-center">
+        <Link
+          to="/reports"
+          className="text-center cursor-pointer mt-8 transition-colors hover:text-gray-500"
+        >
+          Посмотреть отчеты
+        </Link>
+      </div>
     </div>
   );
 }
