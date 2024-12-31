@@ -1,8 +1,6 @@
 "use client";
-
 import { useParams, Link } from "react-router-dom";
 import { LoadingScreen } from "@/shared/ui/loading";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -13,39 +11,49 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useGetSpecificReport } from "@/entities/reports/api/use-get-specific-report";
-import { ChevronDown } from "lucide-react"; // Icon for collapsible
+import { ChevronDown } from "lucide-react";
 
 export function SpecificReportWidget() {
   const { id } = useParams<{ id: string }>();
   const { data: report, isLoading, isError, error } = useGetSpecificReport(id);
+
+  const desiredOrder = [
+    "NCM E.03.02-2014",
+    "NCM C.01.12:2018",
+    "NCM E.03.03:2018",
+    "NCM E.03.03:2018 copy 2",
+    "NCM E.03.03:2018 copy 2 copy",
+    "NCM E.03.03:2018 copy 2 copy copy",
+  ];
 
   if (isLoading) return <LoadingScreen fullScreen />;
   if (isError) return <p>Error: {error.message}</p>;
 
   if (!report) return <p>Report not found.</p>;
 
+  const sortedTableNames = [...report.tableNames].sort(
+    (a, b) => desiredOrder.indexOf(a) - desiredOrder.indexOf(b)
+  );
+
   return (
     <div className="container mx-auto p-4 space-y-6">
       <h1 className="text-3xl font-bold text-center mb-6">
         Отчет: {report.name}
       </h1>
-
-      {/* Render Table Data */}
-      {report.tableNames.map((tableName: string) => {
+      {sortedTableNames.map((tableName: string) => {
         const tableResults = report.results.filter(
           (result: any) => result.tableName === tableName
         );
 
         return (
           <div key={tableName} className="space-y-8">
-            {/* Results for the Table */}
             <div>
               <h2 className="text-xl font-semibold">{tableName}</h2>
               <div className="overflow-x-auto">
                 <Table className="w-[1500px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
+                      <TableHead>Требования:</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -65,8 +73,6 @@ export function SpecificReportWidget() {
           </div>
         );
       })}
-
-      {/* Collapsible Filters Section */}
       <div className="mt-8">
         <details className="border rounded-lg">
           <summary className="cursor-pointer p-4 bg-gray-100 flex items-center justify-between">
@@ -84,12 +90,15 @@ export function SpecificReportWidget() {
                 <div className="flex flex-wrap gap-2">
                   {filterGroup.filters.map(
                     (filter: any, filterIndex: number) => (
-                      <Badge key={filterIndex} variant="secondary">
+                      <span
+                        key={filterIndex}
+                        className="bg-gray-200 px-2 py-1 rounded"
+                      >
                         {filter.column}:{" "}
                         {Array.isArray(filter.values)
                           ? filter.values.join(", ")
                           : "No values"}
-                      </Badge>
+                      </span>
                     )
                   )}
                 </div>
@@ -98,7 +107,6 @@ export function SpecificReportWidget() {
           </div>
         </details>
       </div>
-      {/* Back Button */}
       <div className="flex w-full items-center justify-center">
         <Link to="/filters" className="mt-8">
           <Button variant="outline">Вернуться на страницу с вопросами</Button>
