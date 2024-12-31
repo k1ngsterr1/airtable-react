@@ -55,7 +55,12 @@ export function ReportsWidget() {
               <div>
                 <h2 className="text-lg font-semibold">{report.tableName}</h2>{" "}
                 {/* Table Name */}
-                <p className="text-xl text-black">Имя отчета: {report.name}</p>
+                <p className="text-xl text-black">
+                  Имя отчета:{" "}
+                  {report.name.length > 64
+                    ? `${report.name.slice(0, 64)}...`
+                    : report.name}
+                </p>
               </div>
               <Button
                 variant="ghost"

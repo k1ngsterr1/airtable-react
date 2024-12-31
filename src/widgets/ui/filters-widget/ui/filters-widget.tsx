@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -586,15 +586,15 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
       <div className="w-full flex items-center justify-between">
         <Link
           to="/databases"
-          className="text-center cursor-pointer mt-4 transition-colors hover:text-gray-500"
+          className="text-center flex gap-2 cursor-pointer mt-4 transition-colors hover:text-gray-500"
         >
-          Вернуться назад к базам данных
+          <ChevronLeft /> Вернуться к базам данных
         </Link>
         <Link
           to="/reports"
-          className="text-center cursor-pointer mt-8 transition-colors hover:text-gray-500"
+          className="text-center flex gap-2 cursor-pointer mt-8 transition-colors hover:text-gray-500"
         >
-          Посмотреть отчеты
+          Посмотреть отчеты <ChevronRight />
         </Link>
       </div>
     </div>
