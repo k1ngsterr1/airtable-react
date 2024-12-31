@@ -287,7 +287,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
               <>В данной таблице нет данных</>
             ) : (
               <>
-                <ScrollArea className="h-[400px] pr-4">
+                <ScrollArea className="h-[400px]">
                   {selectedTableNames?.map((tableName) => (
                     <div
                       key={tableName}
@@ -314,7 +314,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                       {filtersByTable[tableName]?.map((filter: any) => (
                         <div
                           key={filter.id}
-                          className="mb-4 p-4 border rounded-lg relative"
+                          className="mb-4 p-3 md:p-4 border rounded-lg relative"
                         >
                           <div className="w-full flex items-center justify-center md:hidden">
                             <Button
