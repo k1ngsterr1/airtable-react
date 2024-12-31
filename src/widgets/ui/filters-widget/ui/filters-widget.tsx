@@ -238,7 +238,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
 
   return (
     <div className="w-full flex items-center justify-center flex-col mx-auto p-6 max-w-4xl">
-      <Card className="xl:w-[1300px] xl:max-w-[1300px] sm:w-full">
+      <Card className="xl:w-[1300px] xl:max-w-[1300px] w-full">
         <CardHeader>
           <CardTitle className="text-xl text-center font-semibold">
             Фильтр по базе &quot;{data?.name}&quot;
