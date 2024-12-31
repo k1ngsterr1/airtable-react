@@ -50,7 +50,7 @@ export function SpecificReportWidget() {
             <div>
               <h2 className="text-xl font-semibold">{tableName}</h2>
               <div className="overflow-x-auto">
-                <Table className="w-[1500px]">
+                <Table className="2xl:w-[1500px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Требования:</TableHead>

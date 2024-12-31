@@ -293,7 +293,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                       key={tableName}
                       className="border-b border-gray-500 pb-4 pt-4"
                     >
-                      <div className="flex items-center gap-4 mb-4">
+                      <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
                         <h3 className="text-lg font-semibold">{tableName}</h3>
                         <Button
                           variant="outline"
@@ -316,7 +316,22 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                           key={filter.id}
                           className="mb-4 p-4 border rounded-lg relative"
                         >
-                          {/* Выбор столбца для фильтрации */}
+                          <div className="w-full flex items-center justify-center md:hidden">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="flex items-center justify-center"
+                              onClick={() =>
+                                removeFilter(
+                                  setFiltersByTable,
+                                  tableName,
+                                  filter.id
+                                )
+                              }
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                           <Select
                             value={filter.column}
                             onValueChange={(value) => {
@@ -346,7 +361,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute top-2 right-2"
+                            className="md:absolute md:top-2 md:right-2 md:block hidden"
                             onClick={() =>
                               removeFilter(
                                 setFiltersByTable,
@@ -583,18 +598,19 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
           </div>
         </CardContent>
       </Card>
-      <div className="w-full flex items-center justify-between">
+      <div className="w-full flex items-center justify-between mt-8">
         <Link
           to="/databases"
-          className="text-center flex gap-2 cursor-pointer mt-4 transition-colors hover:text-gray-500"
+          className="text-center text-[12px] md:text-base flex gap-2 cursor-pointer  transition-colors hover:text-gray-500"
         >
-          <ChevronLeft /> Вернуться к базам данных
+          <ChevronLeft />{" "}
+          <span className="pt-[4px]">Вернуться к базам данных</span>
         </Link>
         <Link
           to="/reports"
-          className="text-center flex gap-2 cursor-pointer mt-8 transition-colors hover:text-gray-500"
+          className="text-center flex gap-2 text-[12px] md:text-base  cursor-pointer transition-colors hover:text-gray-500"
         >
-          Посмотреть отчеты <ChevronRight />
+          <span className="pt-[4px]">Посмотреть отчеты</span> <ChevronRight />
         </Link>
       </div>
     </div>
