@@ -20,8 +20,8 @@ import { LoadingScreen } from "@/shared/ui/loading";
 import { Link, useNavigate } from "react-router-dom";
 import { useCreateReport } from "@/entities/reports/api/use-create-report";
 import { handleCreateReport } from "@/shared/utils/createReport";
-import { Input } from "@/components/ui/input";
 import { removeFilter } from "@/shared/utils/removeFilter";
+import { Input } from "@/components/ui/input";
 
 interface Filter {
   id: string;
@@ -43,10 +43,10 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   const { data } = useSpecificDatabaseData(id);
   const [tableNames, setTableNames] = useState<string[]>([]);
   const [columnData, setColumnData] = useState<any>({});
+  const [reportName, setReportName] = useState("");
   const [tableData, setTableData] = useState<
     Record<string, { columns: string[]; columnData: Record<string, any[]> }>
   >({});
-
   const [selectedTableNames, setSelectedTableNames] = useState<string[] | null>(
     null
   );
@@ -54,10 +54,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   const { mutate: createReport, isPending: isReportLoading } =
     useCreateReport();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    console.log("filter by tables:", filtersByTable);
-  }, [filtersByTable]);
 
   useEffect(() => {
     const fetchTableAndColumnNames = async () => {
@@ -134,9 +130,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
         );
 
       if (hasUnfilledFilters) {
-        alert(
-          "Пожалуйста, добавьте и заполните все фильтры перед созданием отчета!"
-        );
+        alert("Добавьте и заполните все фильтры перед созданием отчета!");
         return;
       }
 
@@ -157,12 +151,15 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
       }));
 
       const reportData = {
+        name: reportName,
         tableNames: Object.keys(filtersByTable),
         filters: tableFilters,
         results,
         author: "currentUser",
         createdAt: new Date(),
       };
+
+      console.log("report data:", reportData);
 
       createReport(reportData as any, {
         onSuccess: (createdReport) => {
@@ -240,32 +237,50 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <Card>
+    <div className="w-full flex items-center justify-center flex-col mx-auto p-6 max-w-4xl">
+      <Card className="xl:w-[1300px] xl:max-w-[1300px] sm:w-full">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">
+          <CardTitle className="text-xl text-center font-semibold">
             Фильтр по базе &quot;{data?.name}&quot;
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
+            <div className="mb-4">
+              <label
+                htmlFor="report-name"
+                className="block text-sm font-medium"
+              >
+                Название отчёта
+              </label>
+              <Input
+                id="report-name"
+                value={reportName}
+                onChange={(e) => setReportName(e.target.value)}
+                placeholder="Введите название отчёта"
+                className="mt-2 w-full"
+              />
+            </div>
             {isLoading ? (
               <p>Загрузка таблиц...</p>
             ) : (
-              <div className="flex flex-wrap gap-4 mb-4">
-                {tableNames.map((tableName) => (
-                  <Button
-                    key={tableName}
-                    variant={
-                      selectedTableNames?.includes(tableName)
-                        ? "default"
-                        : "ghost"
-                    } // Check if tableName is in the selectedTableNames array
-                    onClick={() => handleTableSelect(tableName)}
-                  >
-                    {tableName}
-                  </Button>
-                ))}
+              <div className="overflow-x-auto">
+                <span>Выберите норматив</span>
+                <div className="flex gap-4 mb-4 flex-nowrap mt-4">
+                  {tableNames.map((tableName) => (
+                    <Button
+                      key={tableName}
+                      variant={
+                        selectedTableNames?.includes(tableName)
+                          ? "default"
+                          : "ghost"
+                      } // Check if tableName is in the selectedTableNames array
+                      onClick={() => handleTableSelect(tableName)}
+                    >
+                      {tableName}
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
             {isEmpty(columnData) == true ? (
@@ -274,13 +289,32 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
               <>
                 <ScrollArea className="h-[400px] pr-4">
                   {selectedTableNames?.map((tableName) => (
-                    <div key={tableName}>
-                      <h3 className="text-lg font-semibold">{tableName}</h3>
+                    <div
+                      key={tableName}
+                      className="border-b border-gray-500 pb-4 pt-4"
+                    >
+                      <div className="flex items-center gap-4 mb-4">
+                        <h3 className="text-lg font-semibold">{tableName}</h3>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            addFilter(
+                              setFiltersByTable,
+                              filtersByTable,
+                              tableName
+                            )
+                          }
+                          className="w-[250px]"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Добавить фильтр
+                        </Button>
+                      </div>
 
                       {/* Проверка: если фильтры отсутствуют */}
                       {!filtersByTable[tableName]?.length && (
                         <p className="text-red-500 text-sm mt-2">
-                          Пожалуйста, добавьте хотя бы один фильтр.
+                          Добавьте хотя бы один фильтр.
                         </p>
                       )}
 
@@ -288,7 +322,7 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                       {filtersByTable[tableName]?.map((filter: any) => (
                         <div
                           key={filter.id}
-                          className="mb-4 p-4 border rounded-lg"
+                          className="mb-4 p-4 border rounded-lg relative"
                         >
                           {/* Выбор столбца для фильтрации */}
                           <Select
@@ -317,7 +351,20 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                               )}
                             </SelectContent>
                           </Select>
-
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={() =>
+                              removeFilter(
+                                setFiltersByTable,
+                                tableName,
+                                filter.id
+                              )
+                            }
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                           {/* Логика для числовых фильтров */}
                           {filter.column && (
                             <>
@@ -414,19 +461,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                                       }
                                     }}
                                   />
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() =>
-                                      removeFilter(
-                                        setFiltersByTable,
-                                        tableName,
-                                        filter.id
-                                      )
-                                    }
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
                                 </div>
                               ) : (
                                 <div className="flex items-center">
@@ -500,7 +534,6 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                               )}
                             </>
                           )}
-
                           {/* Отображение выбранных значений фильтра */}
                           <div className="mt-4">
                             <h5 className="font-semibold">
@@ -509,45 +542,45 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
                             <div className="flex flex-wrap gap-2">
                               {filter.values.map(
                                 (value: any, index: number) => (
-                                  <span
+                                  <div
                                     key={index}
-                                    className="bg-gray-200 px-2 py-1 rounded"
+                                    className="flex items-center bg-gray-200 px-2 py-1 rounded"
                                   >
-                                    {value}
-                                  </span>
+                                    <span className="mr-2">{value}</span>
+                                    <button
+                                      className="text-red-500 hover:text-red-700 focus:outline-none"
+                                      onClick={() => {
+                                        // Update the state to remove the selected filter value
+                                        setFiltersByTable((prev) => ({
+                                          ...prev,
+                                          [filter.table]: prev[
+                                            filter.table
+                                          ].map((f) =>
+                                            f.id === filter.id
+                                              ? {
+                                                  ...f,
+                                                  values: f.values.filter(
+                                                    (v: any) => v !== value
+                                                  ),
+                                                }
+                                              : f
+                                          ),
+                                        }));
+                                      }}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </button>
+                                  </div>
                                 )
                               )}
                             </div>
                           </div>
                         </div>
                       ))}
-
-                      {/* Кнопка "Добавить фильтр" */}
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          addFilter(
-                            setFiltersByTable,
-                            filtersByTable,
-                            tableName
-                          )
-                        }
-                        className="w-full mt-4"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Добавить фильтр
-                      </Button>
                     </div>
                   ))}
                 </ScrollArea>
-
                 <div className="flex flex-col gap-4">
-                  <Link
-                    to="/reports"
-                    className="text-center cursor-pointer mt-8 transition-colors hover:text-gray-500"
-                  >
-                    Посмотреть отчеты
-                  </Link>
                   <Button
                     onClick={processAndCreateReport}
                     className="w-full"
@@ -572,12 +605,18 @@ export default function FiltersWidget({ id }: FiltersWidgetProps) {
           </div>
         </CardContent>
       </Card>
-      <div className="w-full flex flex-col items-center justify-center">
+      <div className="w-full flex items-center justify-between">
         <Link
           to="/databases"
           className="text-center cursor-pointer mt-4 transition-colors hover:text-gray-500"
         >
-          Вернуться назад к Базам Данных
+          Вернуться назад к вопросам
+        </Link>
+        <Link
+          to="/reports"
+          className="text-center cursor-pointer mt-8 transition-colors hover:text-gray-500"
+        >
+          Посмотреть отчеты
         </Link>
       </div>
     </div>

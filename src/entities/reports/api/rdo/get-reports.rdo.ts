@@ -16,6 +16,7 @@ export interface ResultRdo {
 
 export interface GetReportRdo {
   id: string; // Unique identifier for the report
+  name: string;
   tableName: string; // Name of the table the report is based on
   tableNames: string[];
   filters: FilterRdo[]; // Array of applied filters

@@ -7,26 +7,47 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import { useDeleteAllReports } from "@/entities/reports/api/use-delete-all-reports";
 
 export function ReportsWidget() {
-  const { data: reports, isLoading, isError, error } = useGetReports();
+  const { data: reports, isLoading, isError, error, refetch } = useGetReports();
   const { mutate: deleteReport, isPending: isDeleting } = useDeleteReport();
+  const { mutate: deleteAllReports, isPending: isDeletingAll } =
+    useDeleteAllReports();
+
+  const handleDeleteAllReports = async () => {
+    if (window.confirm("Вы уверены, что хотите удалить все отчеты?")) {
+      try {
+        await deleteAllReports();
+        refetch();
+      } catch (error) {
+        console.error("Error deleting all reports:", error);
+      }
+    }
+  };
 
   if (isLoading) return <LoadingScreen fullScreen />;
   if (isError) return <p>Error: {error.message}</p>;
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <div className="w-full flex items-center justify-center">
+      <h1 className="text-3xl font-bold text-center mb-6">Список отчетов</h1>
+      <div className="w-full flex justify-between items-center mb-6">
+        <Button
+          variant="destructive"
+          onClick={handleDeleteAllReports}
+          disabled={isDeletingAll}
+        >
+          {isDeletingAll ? "Удаление..." : "Удалить все отчеты"}
+        </Button>
         <Link to="/databases" className="mt-8">
           <Button variant="outline">Вернуться к базам данных</Button>
         </Link>
       </div>
-      <h1 className="text-3xl font-bold text-center mb-6">Список отчетов</h1>
       <div className="space-y-4">
-        {reports?.map((report: any, index) => (
+        {reports?.map((report: any, index: number) => (
           <div
-            key={report.id}
+            key={index}
             className="p-4 border rounded-lg shadow-sm flex flex-col gap-2 cursor-pointer hover:bg-gray-50 transition-colors"
           >
             {/* Header with Report Name */}
@@ -34,7 +55,7 @@ export function ReportsWidget() {
               <div>
                 <h2 className="text-lg font-semibold">{report.tableName}</h2>{" "}
                 {/* Table Name */}
-                <p className="text-xl text-gray-500">Имя отчета: {index + 1}</p>
+                <p className="text-xl text-black">Имя отчета: {report.name}</p>
               </div>
               <Button
                 variant="ghost"
