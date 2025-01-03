@@ -108,8 +108,8 @@ export function SpecificReportWidget() {
         </details>
       </div>
       <div className="flex w-full items-center justify-center">
-        <Link to="/filters" className="mt-8">
-          <Button variant="outline">Вернуться на страницу с вопросами</Button>
+        <Link to="/1/filters" className="mt-8">
+          <Button variant="outline">Вернуться к фильтрам</Button>
         </Link>
       </div>
     </div>

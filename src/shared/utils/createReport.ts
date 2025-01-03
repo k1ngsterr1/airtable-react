@@ -86,8 +86,9 @@ const generateFilterFormula = (
               const sanitizedValue = truncateValue(
                 escapeSpecialCharacters(range.trim())
               );
-              // Используем точное соответствие или SEARCH в зависимости от требований
-              return `SEARCH('${sanitizedValue}', {${columnName}}) > 0`;
+              // Используем условие, которое проверяет значение в столбце
+              // и/или допускает пустое значение
+              return `OR({${columnName}} = '${sanitizedValue}', {${columnName}} = '')`;
             });
           })
           .join(", ");
