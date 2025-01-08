@@ -71,29 +71,65 @@ const generateFilterFormula = (
   filters: Filter[],
   columnNameMap: Record<string, string>
 ): string => {
+  // Получаем список всех столбцов, которые используются в фильтрах
+  const filterColumns = filters.map((filter) =>
+    getColumnName(filter.column, columnNameMap)
+  );
+
   return (
     "AND(" +
     filters
       .map((filter) => {
         const columnName = getColumnName(filter.column, columnNameMap);
+
         if (!filter.values || filter.values.length === 0) return "";
 
+        // Формируем условия для значений фильтра
         const conditions = filter.values
           .flatMap((value) => {
-            // Разделение значений диапазона, если применимо
             const ranges = splitRangeValues(value);
             return ranges.map((range) => {
               const sanitizedValue = truncateValue(
                 escapeSpecialCharacters(range.trim())
               );
-              // Используем условие, которое проверяет значение в столбце
-              // и/или допускает пустое значение
-              return `OR({${columnName}} = '${sanitizedValue}', {${columnName}} = '')`;
+              // Проверяем, если значение соответствует
+              return `{${columnName}} = '${sanitizedValue}'`;
             });
           })
           .join(", ");
 
-        return `OR(${conditions})`;
+        // Логика для пустых значений: проверяем совпадение хотя бы одного другого фильтра
+        const emptyCondition =
+          `AND({${columnName}} = '', OR(` +
+          filterColumns
+            .filter((col) => col !== columnName) // Исключаем текущий столбец
+            .map((col) => {
+              const filterForCol = filters.find(
+                (f) => getColumnName(f.column, columnNameMap) === col
+              );
+              if (!filterForCol) return "";
+
+              // Проверяем совпадение с любым значением для других столбцов
+              return filterForCol.values
+                .map((value) => {
+                  const ranges = splitRangeValues(value);
+                  return ranges
+                    .map((range) => {
+                      const sanitizedValue = truncateValue(
+                        escapeSpecialCharacters(range.trim())
+                      );
+                      return `{${col}} = '${sanitizedValue}'`;
+                    })
+                    .join(", ");
+                })
+                .join(", ");
+            })
+            .filter(Boolean)
+            .join(", ") +
+          "))";
+
+        // Возвращаем условие для текущего столбца
+        return `OR(${conditions}, ${emptyCondition})`;
       })
       .filter(Boolean)
       .join(", ") +
