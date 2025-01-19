@@ -178,7 +178,9 @@ const generateFilterFormula = (
         `Экранированное значение для ${primaryColumn}:`,
         sanitizedValue
       );
-      return `{${primaryColumn}} = '${sanitizedValue}'`;
+
+      // Если поле Multiple Select, используем SEARCH
+      return `SEARCH('${sanitizedValue}', {${primaryColumn}})`;
     })
     .join(" OR ");
 
@@ -204,7 +206,9 @@ const generateFilterFormula = (
             `Экранированное значение для ${columnName}:`,
             sanitizedValue
           );
-          return `{${columnName}} = '${sanitizedValue}'`;
+
+          // Если поле Multiple Select, используем SEARCH
+          return `SEARCH('${sanitizedValue}', {${columnName}})`;
         })
         .join(" OR ");
       console.log(
@@ -267,7 +271,7 @@ export const handleCreateReport = async (
         .select({ maxRecords: 1 })
         .firstPage();
 
-      const configurationValue = configRecords[0].fields["Configuration"];
+      var configurationValue = configRecords[0].fields["Configuration"];
 
       var allowedFields = ["Name", configurationValue, "Configuration"];
 
@@ -314,9 +318,95 @@ export const handleCreateReport = async (
           .select({ filterByFormula })
           .all();
 
+        // Логируем саму формулу
+        console.log("Сгенерированная формула:", filterByFormula);
+
+        // Логируем количество записей, найденных после применения формулы
         console.log(
           `Получено записей из таблицы ${tableName} после применения filterByFormula: ${filteredResults.length}`
         );
+
+        // Если записи не найдены, логируем содержимое таблицы для диагностики
+        if (filteredResults.length === 0) {
+          console.log("Записи в таблице до фильтрации:");
+
+          // Получаем все записи из таблицы
+          const allRecords = await base(tableName).select({}).all();
+
+          // allRecords.forEach((record) => {
+          //   console.log(`Запись ID: ${record.id}`, {
+          //     fields: record.fields,
+          //   });
+          // });
+
+          allRecords.forEach((record) => {
+            // Логируем ID записи и ключи всех её полей
+            console.log(
+              `Запись ID: ${record.id}, доступные ключи полей:`,
+              Object.keys(record.fields)
+            );
+
+            // Проверяем значение поля "Тип лестницы (S1,S2)"
+            const typeStairs = record.fields["Тип лестницы (S1,S2)"];
+
+            if (typeStairs === undefined) {
+              console.log(
+                `Поле "Тип лестницы (S1,S2)" отсутствует или пусто для записи ${record.id}.`
+              );
+            } else if (Array.isArray(typeStairs)) {
+              console.log(
+                `Поле "Тип лестницы (S1,S2)" является Multiple Select. Значения для записи ${record.id}:`,
+                typeStairs.join(", ")
+              );
+            } else {
+              console.log(
+                `Поле "Тип лестницы (S1,S2)" не является Multiple Select. Значение для записи ${record.id}:`,
+                typeStairs
+              );
+            }
+
+            // Выводим полное содержимое записи
+            console.log(
+              `Полное содержимое записи ${record.id}:`,
+              record.fields
+            );
+          });
+
+          console.log("Проверка полей, участвующих в фильтрации:");
+
+          allRecords.forEach((record) => {
+            // Проверяем значения полей "Класс Ф.П.О." и "Тип лестницы (S1,S2)"
+            const classFPO = record.fields["Класс Ф.П.О."];
+            const typeStairs = record.fields["Тип лестницы (S1,S2)"];
+
+            // Логируем состояние каждого поля и выводим полные значения
+            console.log(`Запись ID: ${record.id}`);
+            console.log(`  Значение "Класс Ф.П.О.":`, classFPO);
+            if (typeStairs === undefined) {
+              console.log(`  Поле "Тип лестницы (S1,S2)" пусто.`);
+            } else if (Array.isArray(typeStairs)) {
+              console.log(
+                `  Поле "Тип лестницы (S1,S2)" является Multiple Select. Значения:`,
+                typeStairs.join(", ")
+              );
+            } else {
+              console.log(
+                `  Поле "Тип лестницы (S1,S2)" не является Multiple Select. Значение:`,
+                typeStairs
+              );
+            }
+          });
+          console.log("Проверка полей, участвующих в фильтрации:");
+
+          // Логируем содержимое полей, которые участвуют в фильтре
+          allRecords.forEach((record) => {
+            const classFPO = record.fields["Класс Ф.П.О."];
+            const typeStairs = record.fields["Тип лестницы (S1,S2)"];
+            console.log(
+              `Запись ID: ${record.id}, Класс Ф.П.О.: ${classFPO}, Тип лестницы (S1,S2): ${typeStairs}`
+            );
+          });
+        }
 
         // Добавляем оставшиеся записи
         allRecords.push(
@@ -336,24 +426,31 @@ export const handleCreateReport = async (
 
     console.log("Все записи перед проверкой на лишние поля:", allRecords);
 
+    const isFirstRuleActive = tableFilters.every(
+      ({ filters }) =>
+        filters.length === 1 && filters[0].column === `${configurationValue}` // Условие для первого правила
+    );
+
     // Удаляем записи с лишними полями
-    allRecords = allRecords.filter((record) => {
-      const fieldKeys = Object.keys(record.fields || {});
+    if (isFirstRuleActive) {
+      allRecords = allRecords.filter((record) => {
+        const fieldKeys = Object.keys(record.fields || {});
 
-      // Проверяем, есть ли лишние поля
-      const hasExtraFields = fieldKeys.some(
-        (key) => !allowedFields.includes(key)
-      );
-
-      if (hasExtraFields) {
-        console.log(
-          `Запись с ID ${record.id} удалена из-за лишних полей:`,
-          fieldKeys.filter((key) => !allowedFields.includes(key))
+        // Проверяем, есть ли лишние поля
+        const hasExtraFields = fieldKeys.some(
+          (key) => !allowedFields.includes(key)
         );
-      }
 
-      return !hasExtraFields; // Убираем запись, если найдены лишние поля
-    });
+        if (hasExtraFields) {
+          console.log(
+            `Запись с ID ${record.id} удалена из-за лишних полей:`,
+            fieldKeys.filter((key) => !allowedFields.includes(key))
+          );
+        }
+
+        return !hasExtraFields; // Убираем запись, если найдены лишние поля
+      });
+    }
 
     console.log(
       "Итоговые записи после удаления записей с лишними полями:",
