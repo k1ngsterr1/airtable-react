@@ -66,10 +66,11 @@ const getColumnName = (
   return mappedName;
 };
 
-// Определение основного столбца
+// Определение основного столбца из "Configuration"
 const selectMainColumn = async (
   tableName: string,
-  baseID: string
+  baseID: string,
+  configurationColumn: string
 ): Promise<string | null> => {
   console.log(`Определение основного столбца для таблицы: ${tableName}`);
   const base = new Airtable({ apiKey: import.meta.env.VITE_API_KEY }).base(
@@ -77,33 +78,19 @@ const selectMainColumn = async (
   );
 
   try {
-    console.log("Запрос записей с лимитом в 1 запись...");
-    const records = await base(tableName).select({ maxRecords: 1 }).all();
-
+    const records = await base(tableName).select({ maxRecords: 1 }).firstPage();
     if (records.length === 0) {
       console.error(`Записи не найдены в таблице: ${tableName}`);
       return null;
     }
 
-    console.log("Пример записи:", records[0].fields);
+    const configurationValue = records[0].fields[configurationColumn];
 
-    // Извлекаем список столбцов из первой записи
-    const fields = Object.keys(records[0].fields);
-    console.log("Все доступные столбцы:", fields);
-
-    if (fields.length === 0) {
-      console.error("В таблице нет столбцов.");
-      return null;
-    }
-
-    // Выбираем первый столбец
-
-    const mainColumn = fields[3];
-    console.log(`Первый столбец "${mainColumn}" выбран как основной.`);
-    return mainColumn;
+    console.log(`Основная колонка определена как: "${configurationValue}"`);
+    return configurationValue as any; // Возвращаем первую колонку из "Configuration"
   } catch (error) {
     console.error(
-      `Ошибка при определении основного столбца таблицы ${tableName}:`,
+      `Ошибка при определении основной колонки таблицы ${tableName}:`,
       error
     );
     return null;
@@ -189,9 +176,27 @@ export const handleCreateReport = async (
 
     for (const { tableName, filters } of tableFilters) {
       console.log(`Обработка таблицы: ${tableName}`);
+
       const columnNameMap = await loadColumnNames(tableName, baseID);
-      const primaryColumn =
-        (await selectMainColumn(tableName, baseID)) || "FirstColumn";
+      const firstColumn = Object.keys(columnNameMap)?.[0]; // Первая колонка из списка
+
+      console.log("Названия колонок:", columnNameMap);
+
+      // Автоматически используем столбец "Configuration"
+      const primaryColumn = await selectMainColumn(
+        tableName,
+        baseID,
+        "Configuration"
+      );
+
+      if (!primaryColumn) {
+        console.error(
+          `Основная колонка не определена для таблицы ${tableName}`
+        );
+        continue;
+      }
+
+      console.log("Основная колонка:", primaryColumn);
 
       const filterByFormula = generateFilterFormula(
         filters,
@@ -206,22 +211,18 @@ export const handleCreateReport = async (
         continue;
       }
 
-      console.log("Сгенерированная формула фильтрации:", filterByFormula);
-
       try {
         const records = await base(tableName).select({ filterByFormula }).all();
         console.log(
           `Получено записей из таблицы ${tableName}: ${records.length}`
         );
-
-        const mappedRecords = records.map((record) => ({
-          id: record.id,
-          fields: record.fields,
-          tableName,
-        }));
-
-        console.log("Маппинг записей завершён:", mappedRecords);
-        allRecords.push(...mappedRecords);
+        allRecords.push(
+          ...records.map((record) => ({
+            id: record.id,
+            fields: record.fields,
+            tableName,
+          }))
+        );
       } catch (tableError) {
         console.error(
           `Ошибка при запросе записей из таблицы ${tableName}:`,
